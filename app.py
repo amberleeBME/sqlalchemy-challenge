@@ -1,5 +1,6 @@
 import numpy as np
-
+from datetime import datetime as dt
+from datetime import timedelta
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
@@ -43,7 +44,6 @@ def home():
         f"/api/v1.0/<start>/<end><br/>"
     )
 
-
 # Define what to do when a user hits the /precipitation route
 @app.route("/api/v1.0/precipitation")
 def precipitation():
@@ -52,15 +52,34 @@ def precipitation():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
-    # Query all precipitation values
-    results=session.query(Measurement.date, Measurement.prcp).all()
+    # Query precipitation values for the last year in the database
+    last=session.query(Measurement.date).order_by(Measurement.date.desc()).first()[0]
+    latest_date=dt.strptime(last,'%Y-%m-%d')
+    year_ago=latest_date - timedelta(days=365)
+    results=session.query(Measurement.date, Measurement.prcp).filter(func.strftime("%Y-%m-%d",Measurement.date)>year_ago).all()
     session.close()
 
     # Convert list of tuples into dictionary
     precip=dict(results)
-    
+
     return jsonify(precip)
 
+# Define what to do when a user hits the /precipitation route
+@app.route("/api/v1.0/stations")
+def stations():
+    print("Server received request for 'Stations' page...")
+
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+
+    # Query all stations
+    results=session.query(Station.station).all()
+    session.close()
+
+    # Convert list of tuples into dictionary
+    stations_ls=list(np.ravel(results))
+    
+    return jsonify(stations_ls)
 
 if __name__ == "__main__":
     app.run(debug=True)
