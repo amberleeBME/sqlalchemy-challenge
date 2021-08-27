@@ -107,19 +107,39 @@ def tobs():
     active_station=dict(results)
 
     return jsonify(active_station)
-@app.route("/api/v1.0/<start>")
-def start(start_date):
-    print("Server received request for 'Start' page...")
+@app.route("/api/v1.0/<start_date>")
+def start_search(start_date):
+    # print("Server received request for 'Start' page...")
 
     # Create our session (link) from Python to the DB
     session = Session(engine)
-    print(start_date)
-    format_date=dt.strptime(str(start_date),'%Y-%m-%d')
-    sel=[Measurement.date,func.min(Measurement.tobs),func.max(Measurement.tobs),func.avg(Measurement.tobs)]
-    results=session.query(*sel).filter(func.strftime("%Y-%m-%d",Measurement.date)==format_date).all()
+    
+    sel=[func.min(Measurement.tobs),func.max(Measurement.tobs),func.avg(Measurement.tobs)]
+    results=session.query(*sel).filter(func.strftime("%Y-%m-%d",Measurement.date)>=start_date).all()
     session.close()
-    start_dict=dict(results)
-    return jsonify(start_dict)
+    start_ls=list(np.ravel(results))
+    temp_dict={
+                'Min_Temp': start_ls[0],
+                'Max_Temp':start_ls[1],
+                'Avg_Temp':start_ls[2]
+    }
+    return jsonify(temp_dict)
+@app.route("/api/v1.0/<start_date>/<end_date>")
+def interval_search(start_date, end_date):
+    # print("Server received request for 'Start' page...")
 
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+    
+    sel=[func.min(Measurement.tobs),func.max(Measurement.tobs),func.avg(Measurement.tobs)]
+    results=session.query(*sel).filter(func.strftime("%Y-%m-%d",Measurement.date)>=start_date,func.strftime("%Y-%m-%d",Measurement.date)<=end_date).all()
+    session.close()
+    start_ls=list(np.ravel(results))
+    temp_dict={
+                'Min_Temp': start_ls[0],
+                'Max_Temp':start_ls[1],
+                'Avg_Temp':start_ls[2]
+    }
+    return jsonify(temp_dict)
 if __name__ == "__main__":
     app.run(debug=True)
