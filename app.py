@@ -36,13 +36,13 @@ def home():
     print("Server received request for 'Home' page...")
     # outputs to clientpython
     return (
-        f"Welcome to the Climate App!<br/>"
+        f"Welcome to the Climate App!<br/><br/>"
         f"Available Routes:<br/>"
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
-        f"/api/v1.0/<start><br/>"
-        f"/api/v1.0/<start>/<end><br/>"
+        f"/api/v1.0/&lt;YYYY-MM-DD><br/>"
+        f"/api/v1.0/&lt;YYYY-MM-DD>/&lt;YYYY-MM-DD><br/>"
     )
 
 # Define what to do when a user hits the /precipitation route
@@ -107,6 +107,19 @@ def tobs():
     active_station=dict(results)
 
     return jsonify(active_station)
+@app.route("/api/v1.0/<start>")
+def start(start_date):
+    print("Server received request for 'Start' page...")
+
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+    print(start_date)
+    format_date=dt.strptime(str(start_date),'%Y-%m-%d')
+    sel=[Measurement.date,func.min(Measurement.tobs),func.max(Measurement.tobs),func.avg(Measurement.tobs)]
+    results=session.query(*sel).filter(func.strftime("%Y-%m-%d",Measurement.date)==format_date).all()
+    session.close()
+    start_dict=dict(results)
+    return jsonify(start_dict)
 
 if __name__ == "__main__":
     app.run(debug=True)
