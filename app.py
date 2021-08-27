@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from datetime import datetime as dt
 from datetime import timedelta
 import sqlalchemy
@@ -64,7 +65,7 @@ def precipitation():
 
     return jsonify(precip)
 
-# Define what to do when a user hits the /precipitation route
+# Define what to do when a user hits the /stations route
 @app.route("/api/v1.0/stations")
 def stations():
     print("Server received request for 'Stations' page...")
@@ -76,10 +77,36 @@ def stations():
     results=session.query(Station.station).all()
     session.close()
 
-    # Convert list of tuples into dictionary
+    # Convert list of tuples into normal list
     stations_ls=list(np.ravel(results))
     
     return jsonify(stations_ls)
+
+# Define what to do when a user hits the /tobs route
+@app.route("/api/v1.0/tobs")
+def tobs():
+    print("Server received request for 'Tobs' page...")
+
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+
+    # Query the dates and temperatures of the most active station for the last year of data
+    last=session.query(Measurement.date).order_by(Measurement.date.desc()).first()[0]
+    latest_date=dt.strptime(last,'%Y-%m-%d')
+    year_ago=latest_date - timedelta(days=365)
+    sel=[Measurement.station, Measurement.tobs]
+    station_active=session.query(*sel).all()
+    df=pd.DataFrame(station_active,columns=['Station','tobs']).groupby('Station').count().sort_values(by='tobs',ascending=False)
+    active_id=(df.first_valid_index())
+    sel=[Measurement.date, Measurement.tobs]
+    results=session.query(*sel).filter(Measurement.station==active_id, func.strftime("%Y-%m-%d",Measurement.date)>year_ago).all()
+    
+    session.close()
+
+    # Convert list of tuples into dictionary
+    active_station=dict(results)
+
+    return jsonify(active_station)
 
 if __name__ == "__main__":
     app.run(debug=True)
